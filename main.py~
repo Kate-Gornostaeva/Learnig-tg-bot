@@ -1,0 +1,94 @@
+import asyncio
+import os
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command, CommandStart
+from aiogram.types import FSInputFile
+from deep_translator import GoogleTranslator
+from gtts import gTTS
+from conf import TOKEN
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+states = {'voice': set(), 'translate': set()}
+
+
+@dp.message(CommandStart())
+async def start(message):
+    await message.answer(f"Привет, {message.from_user.first_name}. "
+                         f"Я бот, которого создали исключительно в учебных целях.")
+
+@dp.message(Command("help"))
+async def help(message: types.Message):
+    await message.answer("Это бот выполняет команды:\n"
+                         "Чтобы начать работу введите /start\n"
+                         "Чтобы получить справку введите /help\n"
+                         "Чтобы сохранить фото введите /photo\n"
+                         "Чтобы послушать бота введите /voice\n"
+                         "Чтобы получить перевод на английский введите /english")
+
+@dp.message(Command("photo"))
+async def handle_photo_command(message: types.Message):
+    await message.answer("Отправьте мне фото, и я сохраню его в папку img.")
+
+
+@dp.message(F.photo)
+async def handle_photo(message: types.Message):
+    photo = message.photo[-1]
+
+    file_id = photo.file_id
+    file = await bot.get_file(file_id)
+    file_path = file.file_path
+
+    save_path = f"img/{file_id}.jpg"
+    await bot.download_file(file_path, save_path)
+    await message.answer(f"Фото сохранено как {save_path}")
+
+@dp.message(Command("english"))
+async def translate_to_english(message: types.Message):
+    text = message.text.replace('/english', '').strip()
+    if not text:
+        await message.answer("Введите текст после команды")
+        return
+
+    try:
+        result = GoogleTranslator(source='ru', target='en').translate(text)
+        await message.answer(f"Перевод: {result}")
+    except Exception as e:
+        await message.answer(f"Ошибка: {e}")
+
+
+@dp.message(Command("voice"))
+async def handle_voice_command(message: types.Message):
+    VOICE[message.from_user.id] = True
+    await message.answer("Отправь мне сообщение, и я озвучу его")
+
+
+@dp.message(F.text)
+async def handle_text(message: types.Message):
+    user_id = message.from_user.id
+
+    if VOICE.get(user_id, False):
+        try:
+            tts = gTTS(text=message.text, lang='ru')
+            voice_file = f"voice_{message.message_id}.mp3"
+            tts.save(voice_file)
+
+            voice = FSInputFile(voice_file)
+            await message.answer_voice(voice=voice)
+            os.remove(voice_file)
+        except Exception as e:
+            await message.answer(f"Ошибка генерации голоса: {str(e)}")
+        finally:
+            VOICE.pop(user_id, None)
+    elif not message.text.startswith('/'):
+        await message.answer(message.text)
+
+
+
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+
