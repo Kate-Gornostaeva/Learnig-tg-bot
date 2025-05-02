@@ -84,7 +84,7 @@ async def city(message: types.Message, state: FSMContext):
                 await message.answer(f"Привет, {user_data['name']}! Не удалось получить информацию о погоде в городе {user_data['city']}.")
 
 
-    await state.clear()
+    await state.finish()
 
 async def main():
     await dp.start_polling(bot)
