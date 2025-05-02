@@ -1,0 +1,61 @@
+import asyncio
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command, CommandStart
+from aiogram.types import Message, CallbackQuery,FSInputFile
+
+from conf import TOKEN
+import keyboards as kb
+
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+states = {'voice': set(), 'translate': set()}
+
+@dp.callback_query(F.data == "news")
+async def news(callback: CallbackQuery):
+    await callback.answer("Новости подгружаются", show_alert=True)
+    await callback.message.edit_text("Новости", reply_markup=await kb.test_keyboard())
+
+
+@dp.message(CommandStart())
+async def start(message):
+    await message.answer(f"Привет, {message.from_user.first_name}. "
+                         f"Сегодня мы пробуем разные кнопки", reply_markup=kb.main)
+
+@dp.message(F.text == "Привет")
+async def test_button(message: types.Message):
+    await message.answer(f"Привет, {message.from_user.first_name}. ")
+
+@dp.message(F.text == "Пока")
+async def test_button(message: types.Message):
+    await message.answer(f"До свидания, {message.from_user.first_name}. ")
+
+@dp.message(Command("help"))
+async def help(message: types.Message):
+    await message.answer("Это бот выполняет команды:\n"
+                         "Чтобы начать работу введите /start\n"
+                         "Чтобы получить справку введите /help\n"
+                         "Чтобы получить ссылки на новости, музыку, видео введите /links\n"
+                         "Чтобы получить сюрприз /dynamic")
+
+@dp.message(Command("links"))
+async def links(message: types.Message):
+    await message.answer("Выбери, что тебе нужно:", reply_markup=kb.inline_keyboard)
+
+
+
+@dp.message(Command("dynamic"))
+async def dynamic(message: types.Message):
+    await message.answer("Просто жми!", reply_markup=kb.inline_keyboard_more)
+
+@dp.callback_query(F.data == "show_more")
+async def news(callback: CallbackQuery):
+    await callback.answer("")
+    await callback.message.edit_text("Выбери опцию", reply_markup=await kb.option_keyboard())
+
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+    asyncio.run(main())
