@@ -27,8 +27,8 @@ async def send_apod(message: types.Message):
     apod = get_random_apod()
     photo_url = apod['url']
     title = apod['title']
-    explanation = apod['explanation']
-    await message.answer_photo(photo_url, caption=f"{title}\n\n{explanation}")
+
+    await message.answer_photo(photo_url, caption=f"{title}")
 
 async def main():
     await dp.start_polling(bot)
